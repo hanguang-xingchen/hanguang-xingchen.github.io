@@ -32,7 +32,7 @@
             <!-- SCL-90 雷达图（替代友链） -->
             <div class="scl90-section">
                 <div class="scl90-title">SCL-90</div>
-                <canvas id="sidebarRadar"></canvas>
+                <div id="sidebarRadar"></div>
                 <div class="scl90-summary" id="scl90SidebarSummary">加载中...</div>
             </div>
 
@@ -159,19 +159,12 @@
         // ===== 加载 SCL-90 =====
         async function loadScl90() {
             try {
-                const cached = localStorage.getItem('scl90_cache');
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < CACHE_TTL) {
-                        renderScl90(parsed.data);
-                        return;
-                    }
-                }
+                // 清空旧格式缓存
+                localStorage.removeItem('scl90_cache');
 
-                const res = await fetch('/info/scl90.json');
+                const res = await fetch('/info/scl-90-report.json?t=' + Date.now());
                 if (!res.ok) throw new Error('Failed to fetch');
                 const data = await res.json();
-                localStorage.setItem('scl90_cache', JSON.stringify({ timestamp: Date.now(), data }));
                 renderScl90(data);
             } catch (e) {
                 document.getElementById('scl90Stats').innerHTML = '<div class="error-text">Failed to load SCL-90 data.</div>';
@@ -180,7 +173,8 @@
         }
 
         function renderScl90(data) {
-            const latest = data.records[0];
+            // 扁平单记录结构：直接用 data 本身
+            const latest = data;
 
             // 日期标签
             document.getElementById('scl90Date').textContent = `Latest: ${latest.date}`;
@@ -213,26 +207,11 @@
                 });
             }, 100);
 
-            // 侧边栏雷达图
-            const sidebarCtx = document.getElementById('sidebarRadar').getContext('2d');
-            new Chart(sidebarCtx, {
-                type: 'radar',
-                data: {
-                    labels: Object.keys(latest.factors),
-                    datasets: [{
-                        data: Object.values(latest.factors),
-                        backgroundColor: 'rgba(219, 39, 119, 0.15)',
-                        borderColor: 'rgba(219, 39, 119, 0.8)',
-                        pointBackgroundColor: 'rgba(219, 39, 119, 1)',
-                        pointRadius: 2
-                    }]
-                },
-                options: {
-                    animation: { duration: 800, easing: 'easeOutQuart' },
-                    scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, display: false }, grid: { color: 'rgba(0,0,0,0.05)' } } },
-                    plugins: { legend: { display: false } }
-                }
-            });
+            // 侧边栏雷达图（SVG，排除"其他"，各维度独立颜色）
+            const factorEntries = Object.entries(latest.factors).filter(([name]) => name !== '其他');
+            if (factorEntries.length >= 3) {
+                drawSvgRadar('sidebarRadar', factorEntries);
+            }
 
             // 侧边栏摘要
             const over = latest.summary.factorOverThreshold;
@@ -301,6 +280,161 @@
                     }
                 }
             });
+        }
+
+        // ===== SVG 雷达图（复刻 psyScale 风格） =====
+        function drawSvgRadar(containerId, factorEntries) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+
+            const dims = factorEntries.filter(([name]) => name !== '其他');
+            if (dims.length < 3) return;
+
+            const dimensions = dims.map(([name]) => name);
+            const values = dims.map(([, score]) => score);
+            const n = dimensions.length;
+
+            // 维度名→颜色映射（固定对应，不按序号分配）
+            const colorMap = {
+                '躯体化': '#f472b6', '焦虑': '#8b5cf6', '强迫': '#ec4899',
+                '抑郁': '#f59e0b', '人际敏感': '#10b981', '精神病性': '#3b82f6',
+                '偏执': '#ef4444', '敌对': '#14b8a6', '恐怖': '#f97316', '其他': '#06b6d4'
+            };
+            const colors = dimensions.map(name => colorMap[name] || '#6b7280');
+
+            const size = 240;
+            const cx = size / 2;
+            const cy = size / 2;
+            const maxR = size / 2 - 30;
+            const levelCount = 4;
+            const minValue = 1;
+            const maxValue = 5;
+            const angleStep = (2 * Math.PI) / n;
+            const startAngle = -Math.PI / 2;
+
+            function radius(level) {
+                return (level / levelCount) * maxR;
+            }
+
+            function pointCoords(axisIndex, value) {
+                const angle = startAngle + axisIndex * angleStep;
+                const ratio = (value - minValue) / (maxValue - minValue);
+                const r = Math.max(0, ratio) * maxR;
+                return {
+                    x: cx + r * Math.cos(angle),
+                    y: cy + r * Math.sin(angle)
+                };
+            }
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('style', 'max-width:240px; display:block; margin:0 auto;');
+
+            // 同心圆参考线
+            for (let i = 1; i <= levelCount; i++) {
+                const r = radius(i);
+                const points = [];
+                for (let j = 0; j < n; j++) {
+                    const angle = startAngle + j * angleStep;
+                    points.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+                }
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', points.join(' '));
+                polygon.setAttribute('fill', 'none');
+                polygon.setAttribute('stroke', '#e5e7eb');
+                polygon.setAttribute('stroke-width', '1');
+                svg.appendChild(polygon);
+
+                // 分值标签
+                const val = minValue + (maxValue - minValue) * (i / levelCount);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', cx + 2);
+                text.setAttribute('y', cy - r + 4);
+                text.setAttribute('fill', '#9ca3af');
+                text.setAttribute('font-size', '9');
+                text.setAttribute('font-family', 'FusionPixel, PingFang SC, sans-serif');
+                text.textContent = val.toFixed(1);
+                svg.appendChild(text);
+            }
+
+            // 轴线和标签
+            for (let i = 0; i < n; i++) {
+                const angle = startAngle + i * angleStep;
+                const endX = cx + maxR * Math.cos(angle);
+                const endY = cy + maxR * Math.sin(angle);
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', cx);
+                line.setAttribute('y1', cy);
+                line.setAttribute('x2', endX);
+                line.setAttribute('y2', endY);
+                line.setAttribute('stroke', '#f3f4f6');
+                line.setAttribute('stroke-width', '1');
+                svg.appendChild(line);
+
+                // 维度标签
+                const labelR = maxR + 16;
+                const lx = cx + labelR * Math.cos(angle);
+                const ly = cy + labelR * Math.sin(angle);
+
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', lx);
+                text.setAttribute('y', ly);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'central');
+                text.setAttribute('fill', '#374151');
+                text.setAttribute('font-size', '10');
+                text.setAttribute('font-family', 'FusionPixel, PingFang SC, sans-serif');
+                text.textContent = dimensions[i];
+                svg.appendChild(text);
+
+                // 分数标签（用维度颜色）
+                const scoreR = maxR + 28;
+                const sx = cx + scoreR * Math.cos(angle);
+                const sy = cy + scoreR * Math.sin(angle);
+
+                const scoreText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                scoreText.setAttribute('x', sx);
+                scoreText.setAttribute('y', sy);
+                scoreText.setAttribute('text-anchor', 'middle');
+                scoreText.setAttribute('dominant-baseline', 'central');
+                scoreText.setAttribute('fill', colors[i]);
+                scoreText.setAttribute('font-size', '10');
+                scoreText.setAttribute('font-weight', '600');
+                scoreText.setAttribute('font-family', 'FusionPixel, PingFang SC, sans-serif');
+                scoreText.textContent = values[i].toFixed(2);
+                svg.appendChild(scoreText);
+            }
+
+            // 数据多边形
+            const fillPoints = values.map((v, i) => {
+                const p = pointCoords(i, v);
+                return `${p.x},${p.y}`;
+            }).join(' ');
+
+            const fillPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            fillPolygon.setAttribute('points', fillPoints);
+            fillPolygon.setAttribute('fill', 'rgba(244,114,182,0.15)');
+            fillPolygon.setAttribute('stroke', '#f472b6');
+            fillPolygon.setAttribute('stroke-width', '2');
+            svg.appendChild(fillPolygon);
+
+            // 数据点
+            values.forEach((v, i) => {
+                const p = pointCoords(i, v);
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', p.x);
+                circle.setAttribute('cy', p.y);
+                circle.setAttribute('r', '4');
+                circle.setAttribute('fill', colors[i]);
+                circle.setAttribute('stroke', '#fff');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+
+            container.appendChild(svg);
         }
 
         // ===== 加载 Projects =====
