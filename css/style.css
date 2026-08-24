@@ -330,6 +330,24 @@ body {
     height: 280px;
 }
 
+/* ===== SCL-90 测试按钮 ===== */
+.btn-scl90 {
+    display: inline-block;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, var(--pink-400), var(--pink-500));
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(236, 72, 153, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn-scl90:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(236, 72, 153, 0.45);
+}
+
 /* ===== Projects ===== */
 .repo-list {
     display: flex;
