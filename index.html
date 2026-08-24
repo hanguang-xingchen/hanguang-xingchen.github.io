@@ -105,7 +105,7 @@
             </section>
 
             <footer class="footer">
-                <span>Designed by HX</span>
+                <span>Designed by Hanguang & Qwen & DeepSeek, based on <a href="https://enashpinal.friends.hanguangxingchen.top/" target="_blank">ena-qwq</a></span>
                 <span class="footer-center" id="update-time">数据最后更新于 -- 分钟前</span>
                 <a href="https://github.com/hanguang-xingchen/hanguang-xingchen.github.io" target="_blank">Source on GitHub</a>
             </footer>
@@ -528,8 +528,17 @@
             }
         }
 
+        // ===== 更新时间 =====
+        function updateFooterTime() {
+            const el = document.getElementById('update-time');
+            if (el) {
+                el.textContent = '数据最后更新于 ' + new Date(document.lastModified).toLocaleDateString('zh-CN');
+            }
+        }
+
         // ===== 初始化 =====
         document.addEventListener('DOMContentLoaded', () => {
+            updateFooterTime();
             loadBasis();
             loadLinks();
             loadScl90();
