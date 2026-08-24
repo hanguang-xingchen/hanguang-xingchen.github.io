@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hanguang Xingchen</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <div class="layout">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img class="sidebar-avatar" src="/imgs/avatar.webp" alt="avatar"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23fbcfe8%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2260%22 text-anchor=%22middle%22 font-size=%2250%22 fill=%22%23db2777%22>HX</text></svg>'" />
+                <div class="sidebar-name" id="sidebarName">Loading...</div>
+            </div>
+            <div class="sidebar-bio" id="sidebarBio">加载个人介绍...</div>
+
+            <ul class="info-list" id="infoList">
+                <li class="info-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span id="infoLocation"><strong>位置</strong> Loading...</span>
+                </li>
+                <li class="info-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <span id="infoInterests"><strong>兴趣</strong> Loading...</span>
+                </li>
+            </ul>
+
+            <!-- SCL-90 雷达图（替代友链） -->
+            <div class="scl90-section">
+                <div class="scl90-title">SCL-90</div>
+                <canvas id="sidebarRadar"></canvas>
+                <div class="scl90-summary" id="scl90SidebarSummary">加载中...</div>
+            </div>
+
+            <!-- Links（替代 Connect） -->
+            <div class="links-section">
+                <div class="links-title">Links</div>
+                <div class="links-grid" id="linksGrid"></div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- SCL-90 概览 -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="section-title">SCL-90 Assessment</span>
+                    <span class="section-link" id="scl90Date"></span>
+                </div>
+                <div class="stats-grid" id="scl90Stats">
+                    <div class="loading">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">加载中...</div>
+                    </div>
+                </div>
+                <div class="charts-area">
+                    <div>
+                        <div class="chart-title">Factor Distribution</div>
+                        <div class="chart-container">
+                            <canvas id="factorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Projects -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="section-title">Projects</span>
+                    <a href="https://github.com/hanguang-xingchen?tab=repositories" class="section-link" target="_blank">
+                        全部仓库
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="7" y1="17" x2="17" y2="7" />
+                            <polyline points="7 7 17 7 17 17" />
+                        </svg>
+                    </a>
+                </div>
+                <div class="repo-list" id="repoList">
+                    <div class="error-text">正在加载仓库...</div>
+                </div>
+            </section>
+
+            <!-- Thinking -->
+            <section class="section">
+                <div class="section-header">
+                    <span class="section-title">Thinking</span>
+                    <a href="/thinking" class="section-link" target="_blank">
+                        原始文件
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="7" y1="17" x2="17" y2="7" />
+                            <polyline points="7 7 17 7 17 17" />
+                        </svg>
+                    </a>
+                </div>
+                <div class="thinking-list" id="thinkingList">
+                    <div class="error-text">正在加载思考记录...</div>
+                </div>
+            </section>
+
+            <footer class="footer">
+                <span>Designed by HX</span>
+                <span class="footer-center" id="update-time">数据最后更新于 -- 分钟前</span>
+                <a href="https://github.com/hanguang-xingchen/hanguang-xingchen.github.io" target="_blank">Source on GitHub</a>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        const GITHUB_USERNAME = 'hanguang-xingchen';
+        const CACHE_TTL = 15 * 60 * 1000; // 15 分钟
+
+        // ===== 加载个人信息 =====
+        async function loadBasis() {
+            try {
+                const res = await fetch('/info/basis.json');
+                const data = await res.json();
+                document.getElementById('sidebarName').textContent = data.name;
+                document.getElementById('sidebarBio').textContent = data.bio;
+                document.getElementById('infoLocation').innerHTML = `<strong>位置</strong> ${data.location}`;
+                document.getElementById('infoInterests').innerHTML = `<strong>兴趣</strong> ${(data.interests || []).join('，')}`;
+                document.title = data.name;
+            } catch (e) {
+                console.warn('Failed to load basis:', e);
+            }
+        }
+
+        // ===== 加载链接 =====
+        async function loadLinks() {
+            try {
+                const res = await fetch('/info/links.json');
+                const data = await res.json();
+                const grid = document.getElementById('linksGrid');
+                const links = (data.social || []).slice(0, 4);
+
+                const icons = {
+                    github: '<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;margin-right:6px"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>',
+                    email: '<svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;margin-right:6px"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>'
+                };
+
+                grid.innerHTML = links.map(l => {
+                    const icon = icons[l.icon] || '';
+                    return `<a class="links-link" href="${l.url}" target="_blank">${icon}${l.label}</a>`;
+                }).join('');
+            } catch (e) {
+                console.warn('Failed to load links:', e);
+            }
+        }
+
+        // ===== 加载 SCL-90 =====
+        async function loadScl90() {
+            try {
+                const cached = localStorage.getItem('scl90_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.timestamp < CACHE_TTL) {
+                        renderScl90(parsed.data);
+                        return;
+                    }
+                }
+
+                const res = await fetch('/info/scl90.json');
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                localStorage.setItem('scl90_cache', JSON.stringify({ timestamp: Date.now(), data }));
+                renderScl90(data);
+            } catch (e) {
+                document.getElementById('scl90Stats').innerHTML = '<div class="error-text">Failed to load SCL-90 data.</div>';
+                console.error('SCL-90 error:', e);
+            }
+        }
+
+        function renderScl90(data) {
+            const latest = data.records[0];
+
+            // 日期标签
+            document.getElementById('scl90Date').textContent = `Latest: ${latest.date}`;
+
+            // 统计卡片
+            document.getElementById('scl90Stats').innerHTML = `
+                <div><div class="stat-value">${latest.summary.totalScore}</div><div class="stat-label">Total Score</div></div>
+                <div><div class="stat-value">${latest.summary.totalMean}</div><div class="stat-label">Mean</div></div>
+                <div><div class="stat-value">${latest.summary.positiveItemCount}</div><div class="stat-label">Positive Items</div></div>
+                <div><div class="stat-value">${latest.summary.positiveMean}</div><div class="stat-label">Positive Mean</div></div>
+            `;
+
+            // 侧边栏雷达图
+            const sidebarCtx = document.getElementById('sidebarRadar').getContext('2d');
+            new Chart(sidebarCtx, {
+                type: 'radar',
+                data: {
+                    labels: Object.keys(latest.factors),
+                    datasets: [{
+                        data: Object.values(latest.factors),
+                        backgroundColor: 'rgba(219, 39, 119, 0.15)',
+                        borderColor: 'rgba(219, 39, 119, 0.8)',
+                        pointBackgroundColor: 'rgba(219, 39, 119, 1)',
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, display: false }, grid: { color: 'rgba(0,0,0,0.05)' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 侧边栏摘要
+            const over = latest.summary.factorOverThreshold;
+            document.getElementById('scl90SidebarSummary').innerHTML = `
+                <span class="score">${latest.summary.totalScore}</span> pts<br>
+                ${over.length > 0 ? `<span class="over">⚠ ${over.join(', ')}</span>` : '<span style="color:var(--green-500)">✓ All normal</span>'}
+            `;
+
+            // 主内容区：彩色水平条形图
+            const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6', '#f97316', '#06b6d4'];
+            const sorted = Object.entries(latest.factors).sort((a, b) => b[1] - a[1]);
+            const factorLabels = sorted.map(([name]) => name);
+            const factorData = sorted.map(([, score]) => score);
+
+            const factorCtx = document.getElementById('factorChart').getContext('2d');
+            new Chart(factorCtx, {
+                type: 'bar',
+                data: {
+                    labels: factorLabels,
+                    datasets: [{
+                        data: factorData,
+                        backgroundColor: colors.slice(0, factorData.length),
+                        borderColor: 'transparent',
+                        borderRadius: 0,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return ctx.raw.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            min: 0,
+                            max: 5,
+                            grid: { display: false }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { size: 12, weight: '500' } }
+                        }
+                    },
+                    afterDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        const meta = chart.getDatasetMeta(0);
+                        const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                        chart.data.datasets[0].data.forEach((value, index) => {
+                            const pct = ((value / total) * 100).toFixed(1) + '%';
+                            const bar = meta.data[index];
+                            ctx.fillStyle = '#6b7280';
+                            ctx.font = '12px FusionPixel, PingFang SC, sans-serif';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(pct, bar.x + 4, bar.y);
+                        });
+                    }
+                }
+            });
+        }
+
+        // ===== 加载 Projects =====
+        async function loadProjects() {
+            try {
+                // 本地缓存
+                const cached = localStorage.getItem('projects_cache');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.timestamp < CACHE_TTL) {
+                        renderProjects(parsed.repos);
+                        return;
+                    }
+                }
+
+                const res = await fetch(`https://api.github.com/users/${GITHUB_USERNAME}/repos?sort=updated&per_page=50`, {
+                    headers: { 'Accept': 'application/vnd.github.v3+json' }
+                });
+                if (!res.ok) {
+                    throw new Error(`GitHub API ${res.status}: ${res.statusText}`);
+                }
+                const repos = await res.json();
+                localStorage.setItem('projects_cache', JSON.stringify({ timestamp: Date.now(), repos }));
+                renderProjects(repos);
+            } catch (e) {
+                document.getElementById('repoList').innerHTML = '<div class="error-text">Failed to load projects.</div>';
+                console.error('Projects error:', e);
+            }
+        }
+
+        function renderProjects(repos) {
+            const list = document.getElementById('repoList');
+
+            if (!repos.length) {
+                list.innerHTML = '<div class="error-text">No repositories found.</div>';
+                return;
+            }
+
+            list.innerHTML = repos.slice(0, 10).map(repo => `
+                    <div class="repo-item">
+                        <div class="repo-header">
+                            <a class="repo-name" href="${repo.html_url}" target="_blank">${repo.name}</a>
+                        </div>
+                        <div class="repo-desc">${repo.description || 'No description'}</div>
+                        <div class="repo-stats">
+                            <span>
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .587l3.668 7.568 8.332 1.151-6.064 5.828 1.48 8.279-7.416-3.967-7.417 3.967 1.481-8.279-6.064-5.828 8.332-1.151z"/></svg>
+                                ${repo.stargazers_count}
+                            </span>
+                            <span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+                                ${repo.forks_count}
+                            </span>
+                            <span>${new Date(repo.updated_at).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        // ===== 加载 Thinking =====
+        async function loadThinking() {
+            try {
+                const res = await fetch('/thinking/index.md');
+                const md = await res.text();
+                const entries = md.split(/^## /m).slice(1);
+                const list = document.getElementById('thinkingList');
+
+                list.innerHTML = entries.map(entry => {
+                    const lines = entry.split('\n');
+                    // header is like: [title](/thinking/xxx.md)
+                    const header = lines[0].trim();
+                    // Extract link from markdown: [text](url)
+                    const linkMatch = header.match(/\[(.+?)\]\((.+?)\)/);
+                    const title = linkMatch ? linkMatch[1] : header;
+                    const url = linkMatch ? linkMatch[2] : '';
+                    const dateMatch = title.match(/^(\d{4}-\d{2}-\d{2})\s*(.*)/);
+                    const date = dateMatch ? dateMatch[1] : '';
+                    const preview = lines.slice(1, 4).join(' ').trim().substring(0, 150);
+
+                    return `
+                        <div class="thinking-entry">
+                            <div class="thinking-date">${date}</div>
+                            <div class="thinking-title"><a href="${url}" target="_blank">${title}</a></div>
+                            <div class="thinking-preview">${preview}${preview.length >= 150 ? '...' : ''}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                document.getElementById('thinkingList').innerHTML = '<div class="error-text">Failed to load thinking.</div>';
+                console.error('Thinking error:', e);
+            }
+        }
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBasis();
+            loadLinks();
+            loadScl90();
+            loadProjects();
+            loadThinking();
+        });
+    </script>
+</body>
+</html>
