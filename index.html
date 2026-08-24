@@ -180,12 +180,32 @@
             document.getElementById('scl90Date').textContent = `Latest: ${latest.date}`;
 
             // 统计卡片
-            document.getElementById('scl90Stats').innerHTML = `
-                <div><div class="stat-value">${latest.summary.totalScore}</div><div class="stat-label">Total Score</div></div>
-                <div><div class="stat-value">${latest.summary.totalMean}</div><div class="stat-label">Mean</div></div>
-                <div><div class="stat-value">${latest.summary.positiveItemCount}</div><div class="stat-label">Positive Items</div></div>
-                <div><div class="stat-value">${latest.summary.positiveMean}</div><div class="stat-label">Positive Mean</div></div>
+            const statsEl = document.getElementById('scl90Stats');
+            statsEl.innerHTML = `
+                <div><div class="stat-value" data-target="${latest.summary.totalScore}">0</div><div class="stat-label">Total Score</div></div>
+                <div><div class="stat-value" data-target="${latest.summary.totalMean}">0</div><div class="stat-label">Mean</div></div>
+                <div><div class="stat-value" data-target="${latest.summary.positiveItemCount}">0</div><div class="stat-label">Positive Items</div></div>
+                <div><div class="stat-value" data-target="${latest.summary.positiveMean}">0</div><div class="stat-label">Positive Mean</div></div>
             `;
+
+            // 数字滚动动画
+            setTimeout(() => {
+                document.querySelectorAll('.stat-value[data-target]').forEach(el => {
+                    const target = parseFloat(el.dataset.target);
+                    const isFloat = target % 1 !== 0;
+                    const duration = 800;
+                    const start = performance.now();
+                    function tick(now) {
+                        const elapsed = now - start;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const eased = 1 - Math.pow(1 - progress, 3);
+                        const current = target * eased;
+                        el.textContent = isFloat ? current.toFixed(2) : Math.round(current);
+                        if (progress < 1) requestAnimationFrame(tick);
+                    }
+                    requestAnimationFrame(tick);
+                });
+            }, 100);
 
             // 侧边栏雷达图
             const sidebarCtx = document.getElementById('sidebarRadar').getContext('2d');
@@ -202,6 +222,7 @@
                     }]
                 },
                 options: {
+                    animation: { duration: 800, easing: 'easeOutQuart' },
                     scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, display: false }, grid: { color: 'rgba(0,0,0,0.05)' } } },
                     plugins: { legend: { display: false } }
                 }
@@ -234,6 +255,7 @@
                 },
                 options: {
                     indexAxis: 'y',
+                    animation: { duration: 1000, easing: 'easeOutQuart', delay: (ctx) => ctx.dataIndex * 80 },
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
