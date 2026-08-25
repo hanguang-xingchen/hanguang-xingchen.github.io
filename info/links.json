@@ -3,7 +3,7 @@
     { "label": "GitHub", "url": "https://github.com/hanguang-xingchen", "icon": "github" },
     { "label": "Gitea", "url": "https://gitea.hanguangxingchen.cyou/hanguang", "icon": "gitea" },
     { "label": "BBS", "url": "https://bbs.hanguangxingchen.cyou", "icon": "bbs" },
-    { "label": "QQ", "url": "https://qm.qq.com/cgi-bin/qm/qr?k=xxx", "icon": "qq" },
+    { "label": "QQ", "url": "https://qm.qq.com/q/MCN6tLzCoy", "icon": "qq" },
     { "label": "Email", "url": "mailto:hanguang@hanguangxingchen.top", "icon": "email" }
   ],
   "friends": []
