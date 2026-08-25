@@ -352,26 +352,32 @@ body {
 .repo-list {
     display: flex;
     flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 .repo-item {
-    padding: 20px 0;
-    border-bottom: 1px solid var(--pink-200);
-    transition: background 0.2s ease;
+    padding: 12px 14px;
+    border: 1px solid var(--pink-200);
+    margin-bottom: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    background: var(--white);
 }
 .repo-item:hover {
     background: var(--pink-50);
+    border-color: var(--pink-400);
 }
 .repo-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 .repo-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .repo-name {
-    font-size: 1.25rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
@@ -393,17 +399,21 @@ body {
     width: 100%;
 }
 .repo-desc {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    margin-bottom: 12px;
-    line-height: 1.5;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .repo-stats {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
-    font-size: 0.75rem;
+    gap: 12px;
+    font-size: 0.7rem;
     color: var(--text-tertiary);
 }
 .repo-stats span {
@@ -420,29 +430,34 @@ body {
 .thinking-list {
     display: flex;
     flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 .thinking-entry {
-    padding: 20px 0;
-    border-bottom: 1px solid var(--pink-200);
-    transition: background 0.2s ease, transform 0.2s ease;
+    padding: 12px 14px;
+    border: 1px solid var(--pink-200);
+    margin-bottom: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    background: var(--white);
 }
 .thinking-entry:hover {
     background: var(--pink-50);
-    transform: translateX(4px);
+    border-color: var(--pink-400);
 }
 .thinking-entry:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 .thinking-date {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-tertiary);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .thinking-title {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--pink-600);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .thinking-title a {
     color: inherit;
@@ -463,9 +478,41 @@ body {
     width: 100%;
 }
 .thinking-preview {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ===== 自定义滚动条 ===== */
+.repo-list::-webkit-scrollbar,
+.thinking-list::-webkit-scrollbar {
+    width: 6px;
+}
+.repo-list::-webkit-scrollbar-track,
+.thinking-list::-webkit-scrollbar-track {
+    background: var(--pink-50);
+    border-radius: 3px;
+}
+.repo-list::-webkit-scrollbar-thumb,
+.thinking-list::-webkit-scrollbar-thumb {
+    background: var(--pink-300);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+.repo-list::-webkit-scrollbar-thumb:hover,
+.thinking-list::-webkit-scrollbar-thumb:hover {
+    background: var(--pink-400);
+}
+
+/* Firefox 滚动条 */
+.repo-list,
+.thinking-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pink-300) var(--pink-50);
 }
 
 /* ===== 错误/加载 ===== */
