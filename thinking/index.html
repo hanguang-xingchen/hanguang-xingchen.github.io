@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Thinking - Hanguang Xingchen</title>
     <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.0/css/all.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@4.0.0/dist/markdown-it-footnote.min.js"></script>
     <style>
@@ -40,7 +41,8 @@
 
         /* ===== GFM Alerts（[!NOTE] 等） ===== */
         .gfm-alert { padding: 12px 16px; margin: 16px 0; border-left: 4px solid var(--gray-400); background: var(--gray-50); }
-        .gfm-alert-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
+        .gfm-alert-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .gfm-alert-title i { font-size: 0.9rem; }
         .gfm-alert-body { font-size: 0.9rem; line-height: 1.6; }
         .gfm-alert-note { border-left-color: #0969da; background: #ddf4ff; }
         .gfm-alert-note .gfm-alert-title { color: #0969da; }
@@ -105,7 +107,14 @@
         // ===== markdown-it 插件：GFM Alerts =====
         function markdownItAlert(md) {
             const alertTypes = ['note', 'tip', 'important', 'warning', 'caution', 'info'];
-            const icons = { note: '💬', tip: '💡', important: 'ℹ️', warning: '⚠️', caution: '🚨', info: 'ℹ️' };
+            const icons = {
+                note: '<i class="fa-solid fa-circle-info"></i>',
+                tip: '<i class="fa-solid fa-lightbulb"></i>',
+                important: '<i class="fa-solid fa-bookmark"></i>',
+                warning: '<i class="fa-solid fa-triangle-exclamation"></i>',
+                caution: '<i class="fa-solid fa-bolt"></i>',
+                info: '<i class="fa-solid fa-circle-info"></i>'
+            };
             const titles = { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution', info: 'Info' };
 
             // 自定义 block 规则：识别 > [!TYPE] 开头的 blockquote
