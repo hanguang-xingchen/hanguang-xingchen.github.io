@@ -102,45 +102,110 @@
     </div>
 
     <script>
+        // ===== markdown-it 插件：GFM Alerts =====
+        function markdownItAlert(md) {
+            const alertTypes = ['note', 'tip', 'important', 'warning', 'caution', 'info'];
+            const icons = { note: '💬', tip: '💡', important: 'ℹ️', warning: '⚠️', caution: '🚨', info: 'ℹ️' };
+            const titles = { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution', info: 'Info' };
+
+            // 自定义 block 规则：识别 > [!TYPE] 开头的 blockquote
+            function alertRule(state, startLine, endLine, silent) {
+                const pos = state.bMarks[startLine] + state.tShift[startLine];
+                const max = state.eMarks[startLine];
+                const line = state.src.slice(pos, max);
+
+                // 匹配 > [!TYPE] 或 >[!TYPE]
+                const match = line.match(/^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|INFO)\]\s*(.*)/i);
+                if (!match) return false;
+
+                if (silent) return true; // 探测模式
+
+                const type = match[1].toLowerCase();
+                const firstLineRest = match[2];
+
+                // 找到 blockquote 的结束行
+                let nextLine = startLine;
+                for (let i = startLine; i < endLine; i++) {
+                    const p = state.bMarks[i] + state.tShift[i];
+                    const m = state.eMarks[i];
+                    const ln = state.src.slice(p, m);
+                    if (ln.startsWith('>') || ln.trim() === '') {
+                        nextLine = i;
+                    } else {
+                        break;
+                    }
+                }
+
+                // 收集 blockquote 内所有行的内容（去掉 > 前缀）
+                const lines = [];
+                for (let i = startLine; i <= nextLine; i++) {
+                    const p = state.bMarks[i] + state.tShift[i];
+                    const m = state.eMarks[i];
+                    let ln = state.src.slice(p, m);
+                    // 去掉 > 前缀
+                    if (i === startLine) {
+                        ln = ln.replace(/^>\s*\[![A-Z]+\]\s*/i, '');
+                    } else {
+                        ln = ln.replace(/^>\s*/, '');
+                    }
+                    lines.push(ln);
+                }
+
+                const bodyText = lines.join('\n').trim();
+
+                // 生成 HTML token
+                const token = state.push('html_block', '', 0);
+                token.content = `<div class="gfm-alert gfm-alert-${type}">` +
+                    `<div class="gfm-alert-title">${icons[type]} ${titles[type]}</div>` +
+                    `<div class="gfm-alert-body">${md.renderInline(bodyText)}</div>` +
+                    `</div>`;
+
+                state.line = nextLine + 1;
+                return true;
+            }
+
+            // 注册到 block ruler，在 blockquote 之前运行
+            md.block.ruler.before('blockquote', 'alert', alertRule);
+        }
+
+        // ===== markdown-it 插件：Obsidian Spoilers =====
+        function markdownItSpoiler(md) {
+            // inline 规则：识别 >!text!<
+            function spoilerInline(state, silent) {
+                const pos = state.pos;
+                const max = state.posMax;
+
+                if (pos + 2 > max) return false;
+                if (state.src.slice(pos, pos + 2) !== '>!') return false;
+
+                if (silent) return false; // inline 不支持 silent
+
+                // 查找结束标记 !<
+                const endMatch = state.src.indexOf('!<', pos + 2);
+                if (endMatch === -1) return false;
+
+                const content = state.src.slice(pos + 2, endMatch);
+
+                // 创建 inline HTML token
+                const token = state.push('html_inline', '', 0);
+                token.content = `<mark>${content}</mark>`;
+
+                state.pos = endMatch + 2;
+                return true;
+            }
+
+            md.inline.ruler.before('text', 'spoiler', spoilerInline);
+        }
+
+        // 初始化 markdown-it，加载自定义插件
         const md = window.markdownit({
             html: true,
             breaks: false,
             linkify: true,
             typographer: true,
-        }).use(window.markdownitFootnote);
-
-        // 预处理：转换 Obsidian spoiler 语法 >!text!< 为 <mark> 标签
-        function preprocessSpoilers(text) {
-            return text.replace(/>!(.*?)!</gs, '<mark>$1</mark>');
-        }
-
-        // 后处理：转换 markdown-it 渲染后的 [!NOTE] blockquotes 为 styled alerts
-        function postprocessAlerts(html) {
-            // 匹配包含 [!TYPE] 的 blockquote
-            return html.replace(
-                /<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|INFO)\]\s*(.*?)<\/p>([\s\S]*?)<\/blockquote>/gi,
-                (match, type, firstLine, rest) => {
-                    const typeLower = type.toLowerCase();
-                    const icons = { note: '💬', tip: '💡', important: 'ℹ️', warning: '⚠️', caution: '🚨', info: 'ℹ️' };
-                    const titles = { note: 'Note', tip: 'Tip', important: 'Important', warning: 'Warning', caution: 'Caution', info: 'Info' };
-                    const icon = icons[typeLower] || '💬';
-                    const title = titles[typeLower] || 'Note';
-                    const content = rest.replace(/^<p>|<\/p>$/g, '').trim();
-                    const firstContent = firstLine.replace(/\*\*/?/g, '').trim();
-                    return `<div class="gfm-alert gfm-alert-${typeLower}">
-                        <div class="gfm-alert-title">${icon} ${title}</div>
-                        <div class="gfm-alert-body">${firstContent}${content}</div>
-                    </div>`;
-                }
-            );
-        }
-
-        // 合并渲染管线
-        function renderMarkdown(mdText) {
-            const cleaned = preprocessSpoilers(mdText);
-            const html = md.render(cleaned);
-            return postprocessAlerts(html);
-        }
+        }).use(window.markdownitFootnote)
+          .use(markdownItAlert)
+          .use(markdownItSpoiler);
 
         // 加载个人信息
         async function loadBasis() {
@@ -207,7 +272,7 @@
                 if (!res.ok) throw new Error('Article not found');
                 const mdText = await res.text();
                 
-                const html = renderMarkdown(mdText);
+                const html = md.render(mdText);
                 container.innerHTML = `<div class="article-body">${html}<a class="back-link" href="/thinking/">← 返回 Thinking 列表</a></div>`;
                 
                 // 更新标题
