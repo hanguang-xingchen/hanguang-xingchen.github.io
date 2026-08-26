@@ -37,6 +37,36 @@
         .thinking-index p { font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 16px 0; }
         .back-link { display: inline-block; margin-top: 40px; color: var(--pink-500); text-decoration: none; font-size: 0.85rem; }
         .back-link:hover { text-decoration: underline; }
+
+        /* ===== GFM Alerts（[!NOTE] 等） ===== */
+        .gfm-alert { padding: 12px 16px; margin: 16px 0; border-left: 4px solid var(--gray-400); background: var(--gray-50); }
+        .gfm-alert-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
+        .gfm-alert-body { font-size: 0.9rem; line-height: 1.6; }
+        .gfm-alert-note { border-left-color: #0969da; background: #ddf4ff; }
+        .gfm-alert-note .gfm-alert-title { color: #0969da; }
+        .gfm-alert-tip { border-left-color: #1a7f37; background: #dafbe1; }
+        .gfm-alert-tip .gfm-alert-title { color: #1a7f37; }
+        .gfm-alert-important { border-left-color: #8250df; background: #f5f0ff; }
+        .gfm-alert-important .gfm-alert-title { color: #8250df; }
+        .gfm-alert-warning { border-left-color: #bf4800; background: #fff8c5; }
+        .gfm-alert-warning .gfm-alert-title { color: #bf4800; }
+        .gfm-alert-caution { border-left-color: #cf222e; background: #ffebe9; }
+        .gfm-alert-caution .gfm-alert-title { color: #cf222e; }
+
+        /* ===== Obsidian Spoilers ===== */
+        .article-body mark {
+            background: var(--gray-200);
+            color: var(--gray-200);
+            padding: 0 4px;
+            border-radius: 2px;
+            transition: color 0.2s, background 0.2s;
+            cursor: help;
+        }
+        .article-body mark:hover {
+            background: var(--pink-100);
+            color: var(--text-primary);
+        }
+
         .thinking-loading { text-align: center; color: var(--text-tertiary); padding: 40px 0; }
     </style>
 </head>
@@ -76,6 +106,51 @@
             linkify: true,
             typographer: true,
         }).use(window.markdownitFootnote);
+
+        // 预处理：转换 Obsidian spoiler 语法 >!text!< 为 <mark> 标签
+        function preprocessSpoilers(text) {
+            return text.replace(/>!(.*?)!</gs, '<mark>$1</mark>');
+        }
+
+        // 后处理：转换 markdown-it 渲染后的 [!NOTE] blockquotes 为 styled alerts
+        function postprocessAlerts(html) {
+            // 匹配包含 [!TYPE] 的 blockquote
+            return html.replace(
+                /<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*?)<\/p>([\s\S]*?)<\/blockquote>/gi,
+                (match, type, firstLine, rest) => {
+                    const typeLower = type.toLowerCase();
+                    const icons = {
+                        note: '💬',
+                        tip: '💡',
+                        important: 'ℹ️',
+                        warning: '⚠️',
+                        caution: '🚨'
+                    };
+                    const titles = {
+                        note: 'Note',
+                        tip: 'Tip',
+                        important: 'Important',
+                        warning: 'Warning',
+                        caution: 'Caution'
+                    };
+                    const icon = icons[typeLower] || '💬';
+                    const title = titles[typeLower] || 'Note';
+                    const content = rest.replace(/^<p>|<\/p>$/g, '').trim();
+                    const firstContent = firstLine.replace(/\*\*/?/g, '').trim();
+                    return `<div class="gfm-alert gfm-alert-${typeLower}">
+                        <div class="gfm-alert-title">${icon} ${title}</div>
+                        <div class="gfm-alert-body">${firstContent}${content}</div>
+                    </div>`;
+                }
+            );
+        }
+
+        // 合并渲染管线
+        function renderMarkdown(mdText) {
+            const cleaned = preprocessSpoilers(mdText);
+            const html = md.render(cleaned);
+            return postprocessAlerts(html);
+        }
 
         // 加载个人信息
         async function loadBasis() {
@@ -142,7 +217,7 @@
                 if (!res.ok) throw new Error('Article not found');
                 const mdText = await res.text();
                 
-                const html = md.render(mdText);
+                const html = renderMarkdown(mdText);
                 container.innerHTML = `<div class="article-body">${html}<a class="back-link" href="/thinking/">← 返回 Thinking 列表</a></div>`;
                 
                 // 更新标题
