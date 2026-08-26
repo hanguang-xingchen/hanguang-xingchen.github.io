@@ -1,0 +1,193 @@
+name: Build and Deploy Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install markdown-it + plugins
+        run: npm init -y && npm install markdown-it markdown-it-footnote markdown-it-gfm-table
+
+      - name: Render thinking articles
+        run: |
+          node << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const MarkdownIt = require('markdown-it');
+          const md = new MarkdownIt({
+            html: true,
+            breaks: false,
+            linkify: true,
+          })
+          .use(require('markdown-it-footnote'))
+          .use(require('markdown-it-gfm-table'));
+
+          const thinkingDir = path.join(__dirname, 'thinking');
+          const outDir = path.join(__dirname, 'thinking-pages');
+
+          if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+          // 复制 CSS 和 fonts
+          const cssDir = path.join(__dirname, 'css');
+          if (fs.existsSync(cssDir)) {
+            fs.cpSync(cssDir, path.join(outDir, 'css'), { recursive: true });
+          }
+          const fontsDir = path.join(__dirname, 'fonts');
+          if (fs.existsSync(fontsDir)) {
+            fs.cpSync(fontsDir, path.join(outDir, 'fonts'), { recursive: true });
+          }
+
+          // 通用文章模板（复用你的完整布局）
+          function articleTemplate(title, htmlContent) {
+            return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title}</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .article-body { max-width: 720px; margin: 0 auto; padding: 0 0 40px 0; }
+  .article-body h1 { font-size: 1.8rem; margin-bottom: 8px; color: var(--pink-600); }
+  .article-body h2 { font-size: 1.3rem; margin: 32px 0 12px; color: var(--pink-500); border-bottom: 1px solid var(--pink-200); padding-bottom: 4px; }
+  .article-body p { margin: 12px 0; line-height: 1.8; }
+  .article-body table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.85rem; }
+  .article-body th, .article-body td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+  .article-body th { background: var(--pink-50); font-weight: 600; }
+  .article-body blockquote { border-left: 3px solid var(--pink-300); padding-left: 12px; color: var(--text-secondary); margin: 12px 0; }
+  .article-body .footnotes { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-tertiary); }
+  .article-body a { color: var(--pink-500); text-decoration: none; position: relative; }
+  .article-body a::after { content: ''; position: absolute; left: 0; bottom: -1px; width: 0; height: 1px; background: var(--pink-500); transition: width 0.3s ease; }
+  .article-body a:hover::after { width: 100%; }
+  .article-body code { background: var(--pink-50); padding: 2px 6px; font-size: 0.85rem; color: var(--pink-600); }
+  .article-body pre { background: var(--gray-800); color: #f9fafb; padding: 16px; overflow-x: auto; font-size: 0.8rem; }
+  .article-body pre code { background: none; color: inherit; padding: 0; }
+  .article-body ul, .article-body ol { margin: 12px 0; padding-left: 24px; }
+  .article-body li { margin: 4px 0; line-height: 1.7; }
+  .article-body strong { color: var(--pink-600); }
+  .article-body em { color: var(--text-secondary); }
+  .article-body del { color: var(--text-tertiary); }
+  .back-link { display: inline-block; margin-top: 40px; color: var(--pink-500); text-decoration: none; font-size: 0.85rem; }
+  .back-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <img class="sidebar-avatar" src="/imgs/avatar.webp" alt="avatar"
+         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23fbcfe8%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2260%22 text-anchor=%22middle%22 font-size=%2250%22 fill=%22%23db2777%22>HX</text></svg>'" />
+    <div class="sidebar-name">Hanguang Xingchen</div>
+  </div>
+  <div class="sidebar-bio">Loading...</div>
+</aside>
+<main class="main-content">
+<section class="section">
+<div class="section-header">
+<span class="section-title">${title}</span>
+<a href="/thinking/" class="section-link">← 返回列表</a>
+</div>
+<div class="article-body">
+${htmlContent}
+<a class="back-link" href="/thinking/">← 返回 Thinking 列表</a>
+</div>
+</section>
+<footer class="footer">
+<span>Designed by Hanguang & Qwen & DeepSeek</span>
+<a href="https://github.com/hanguang-xingchen/hanguang-xingchen.github.io" target="_blank">Source on GitHub</a>
+</footer>
+</main>
+</div>
+</body>
+</html>`;
+          }
+
+          // 渲染每篇文章
+          const files = fs.readdirSync(thinkingDir).filter(f => f.endsWith('.md') && f !== 'index.md');
+          for (const file of files) {
+            const src = path.join(thinkingDir, file);
+            const content = fs.readFileSync(src, 'utf-8');
+            const html = md.render(content);
+            const title = path.basename(file, '.md').replace(/-\d+-/, '').replace(/-/g, ' ');
+            const outFile = path.join(outDir, file.replace('.md', '.html'));
+            fs.writeFileSync(outFile, articleTemplate(title, html));
+            console.log(`Rendered: ${file}`);
+          }
+
+          // 渲染 index.md（Thinking 列表页）
+          const indexContent = fs.readFileSync(path.join(thinkingDir, 'index.md'), 'utf-8');
+          const indexHtml = md.render(indexContent);
+          fs.writeFileSync(path.join(outDir, 'index.html'), `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <img class="sidebar-avatar" src="/imgs/avatar.webp" alt="avatar"
+         onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23fbcfe8%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2260%22 text-anchor=%22middle%22 font-size=%2250%22 fill=%22%23db2777%22>HX</text></svg>'" />
+    <div class="sidebar-name">Hanguang Xingchen</div>
+  </div>
+  <div class="sidebar-bio">Loading...</div>
+</aside>
+<main class="main-content">
+<section class="section">
+<div class="section-header">
+<span class="section-title">Thinking</span>
+<a href="/" class="section-link">← 返回主页</a>
+</div>
+<div class="thinking-index" style="max-width:720px;">
+${indexHtml}
+</div>
+</section>
+<footer class="footer">
+<span>Designed by Hanguang & Qwen & DeepSeek</span>
+<a href="https://github.com/hanguang-xingchen/hanguang-xingchen.github.io" target="_blank">Source on GitHub</a>
+</footer>
+</main>
+</div>
+</body>
+</html>`);
+          console.log('Rendered: index.md');
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: thinking-pages
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
