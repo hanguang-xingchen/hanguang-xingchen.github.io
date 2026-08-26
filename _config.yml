@@ -1,0 +1,35 @@
+# Site settings
+title: Hanguang Xingchen
+description: 涵光新辰的个人网站
+baseurl: ""
+url: "https://hanguang-xingchen.github.io"
+
+# Build settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter: rouge
+
+# Permalinks
+permalink: /:path/
+
+# Thinking 文章放在 thinking/ 目录下
+collections:
+  thinking:
+    output: true
+    permalink: /thinking/:title/
+
+# 排除不需要 Jekyll 构建的文件
+exclude:
+  - thinking/index.html
+  - thinking/list.md
+  - node_modules/
+  - vendor/
+
+# 默认布局
+defaults:
+  - scope:
+      path: "thinking"
+    values:
+      layout: "thinking"
