@@ -497,31 +497,46 @@
         // ===== 加载 Thinking =====
         async function loadThinking() {
             try {
-                const res = await fetch('/thinking/list.md');
-                const md = await res.text();
-                const entries = md.split(/^## /m).slice(1);
+                // 从各文章 .md 文件提取 front matter 和预览
+                const articles = [
+                    '2026-08-26-关于我：追忆往昔.md',
+                    '2026-08-25-关于昨天服务器乌龙事件.md',
+                    '2026-08-24-想法.md'
+                ];
+
                 const list = document.getElementById('thinkingList');
+                const entries = [];
 
-                list.innerHTML = entries.map(entry => {
-                    const lines = entry.split('\n');
-                    // header is like: [title](/thinking/?article=xxx)
-                    const header = lines[0].trim();
-                    // Extract link from markdown: [text](url)
-                    const linkMatch = header.match(/\[(.+?)\]\((.+?)\)/);
-                    const title = linkMatch ? linkMatch[1] : header;
-                    const url = linkMatch ? linkMatch[2] : '';
-                    const dateMatch = title.match(/^(\d{4}-\d{2}-\d{2})\s*(.*)/);
-                    const date = dateMatch ? dateMatch[1] : '';
-                    const preview = lines.slice(1, 4).join(' ').trim().substring(0, 150);
+                for (const file of articles) {
+                    try {
+                        const res = await fetch(`/thinking/${file}`);
+                        const text = await res.text();
+                        // 提取 front matter
+                        const fmMatch = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+                        if (fmMatch) {
+                            const fm = fmMatch[1];
+                            const body = fmMatch[2];
+                            const titleMatch = fm.match(/title:\s*"(.+?)"/);
+                            const dateMatch = fm.match(/date:\s*(.+)/);
+                            const title = titleMatch ? titleMatch[1] : file;
+                            const date = dateMatch ? dateMatch[1].trim() : '';
+                            const preview = body.trim().substring(0, 150);
+                            // 生成无 .md 后缀的 URL
+                            const url = `/thinking/${file.replace(/\.md$/, '')}/`;
+                            entries.push({ date, title, url, preview });
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to load ${file}:`, e);
+                    }
+                }
 
-                    return `
-                        <div class="thinking-entry">
-                            <div class="thinking-date">${date}</div>
-                            <div class="thinking-title"><a href="${url}">${title}</a></div>
-                            <div class="thinking-preview">${preview}${preview.length >= 150 ? '...' : ''}</div>
-                        </div>
-                    `;
-                }).join('');
+                list.innerHTML = entries.map(e => `
+                    <div class="thinking-entry">
+                        <div class="thinking-date">${e.date}</div>
+                        <div class="thinking-title"><a href="${e.url}">${e.title}</a></div>
+                        <div class="thinking-preview">${e.preview}${e.preview.length >= 150 ? '...' : ''}</div>
+                    </div>
+                `).join('');
             } catch (e) {
                 document.getElementById('thinkingList').innerHTML = '<div class="error-text">Failed to load thinking.</div>';
                 console.error('Thinking error:', e);
