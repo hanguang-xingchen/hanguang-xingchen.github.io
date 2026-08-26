@@ -14,12 +14,6 @@ kramdown:
 # Permalinks
 permalink: /:path/
 
-# Thinking 文章放在 thinking/ 目录下
-collections:
-  thinking:
-    output: true
-    permalink: /thinking/:title/
-
 # 排除不需要 Jekyll 构建的文件
 exclude:
   - thinking/index.html
