@@ -504,7 +504,7 @@
 
                 list.innerHTML = entries.map(entry => {
                     const lines = entry.split('\n');
-                    // header is like: [title](/thinking/xxx.md)
+                    // header is like: [title](/thinking.html?article=xxx)
                     const header = lines[0].trim();
                     // Extract link from markdown: [text](url)
                     const linkMatch = header.match(/\[(.+?)\]\((.+?)\)/);
@@ -517,7 +517,7 @@
                     return `
                         <div class="thinking-entry">
                             <div class="thinking-date">${date}</div>
-                            <div class="thinking-title"><a href="${url}" target="_blank">${title}</a></div>
+                            <div class="thinking-title"><a href="${url}">${title}</a></div>
                             <div class="thinking-preview">${preview}${preview.length >= 150 ? '...' : ''}</div>
                         </div>
                     `;
