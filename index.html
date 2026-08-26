@@ -91,7 +91,7 @@
             <section class="section">
                 <div class="section-header">
                     <span class="section-title">Thinking</span>
-                    <a href="/thinking.html" class="section-link">
+                    <a href="/thinking/" class="section-link">
                         查看全部
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="7" y1="17" x2="17" y2="7" />
@@ -497,14 +497,14 @@
         // ===== 加载 Thinking =====
         async function loadThinking() {
             try {
-                const res = await fetch('/thinking/index.md');
+                const res = await fetch('/thinking/list.md');
                 const md = await res.text();
                 const entries = md.split(/^## /m).slice(1);
                 const list = document.getElementById('thinkingList');
 
                 list.innerHTML = entries.map(entry => {
                     const lines = entry.split('\n');
-                    // header is like: [title](/thinking.html?article=xxx)
+                    // header is like: [title](/thinking/?article=xxx)
                     const header = lines[0].trim();
                     // Extract link from markdown: [text](url)
                     const linkMatch = header.match(/\[(.+?)\]\((.+?)\)/);

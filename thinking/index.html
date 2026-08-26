@@ -94,13 +94,13 @@
         async function renderList() {
             const container = document.getElementById('thinkingContent');
             try {
-                const res = await fetch('/thinking/index.md');
+                const res = await fetch('/thinking/list.md');
                 if (!res.ok) throw new Error('Failed to fetch');
                 const mdText = await res.text();
-                
+
                 const entries = mdText.split(/^## /m).slice(1);
                 let html = '<div class="thinking-index">';
-                
+
                 entries.forEach(entry => {
                     const lines = entry.split('\n');
                     const header = lines[0].trim();
@@ -111,11 +111,10 @@
                     const date = dateMatch ? dateMatch[1] : '';
                     const shortTitle = dateMatch ? dateMatch[2] : title;
                     const preview = lines.slice(1, 4).join(' ').trim().substring(0, 150);
-                    
-                    // 把 /thinking/xxx 链接改成 /thinking.html?article=xxx
-                    const articleSlug = url.replace('/thinking/', '');
-                    const newUrl = `/thinking.html?article=${encodeURIComponent(articleSlug)}`;
-                    
+
+                    // 把 /thinking/?article=xxx 链接保持原样
+                    const newUrl = url.startsWith('/thinking/?') ? url : `/thinking/?article=${encodeURIComponent(url.replace('/thinking/', ''))}`;
+
                     html += `
                         <div class="thinking-entry">
                             <div class="thinking-date">${date}</div>
@@ -144,7 +143,7 @@
                 const mdText = await res.text();
                 
                 const html = md.render(mdText);
-                container.innerHTML = `<div class="article-body">${html}<a class="back-link" href="/thinking.html">← 返回 Thinking 列表</a></div>`;
+                container.innerHTML = `<div class="article-body">${html}<a class="back-link" href="/thinking/">← 返回 Thinking 列表</a></div>`;
                 
                 // 更新标题
                 const titleMatch = mdText.match(/^#\s+(.+)$/m);
