@@ -4,7 +4,7 @@ layout: thinking
 ---
 
 <div class="thinking-index">
-{% assign articles = site.pages | where_exp: "item", "item.dir == '/thinking/'" | where_exp: "item", "item.name != 'index.md'" | sort: 'date' | reverse %}
+{% assign articles = site.pages | where_exp: "item", "item.path contains 'thinking/20'" | where_exp: "item", "item.name != 'index.md'" | sort: 'date' | reverse %}
 {% for article in articles %}
 <div class="thinking-entry">
     <div class="thinking-date">{{ article.date | date: '%Y-%m-%d' }}</div>
